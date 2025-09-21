@@ -109,44 +109,61 @@ vim.o.mouse = 'a'
 -- Don't show the mode, since it's already in the status line
 vim.o.showmode = false
 
+-- Define what is stored in sessions
+vim.o.sessionoptions = 'blank,buffers,curdir,folds,help,tabpages,winsize,winpos,terminal,localoptions'
+
 -- Sync clipboard between OS and Neovim.
 --  Schedule the setting after `UiEnter` because it can increase startup-time.
 --  Remove this option if you want your OS clipboard to remain independent.
 --  See `:help 'clipboard'`
-vim.schedule(function()
-  vim.o.clipboard = 'unnamedplus'
 
-  -- Configure clipboard provider based on session type
-  if os.getenv 'WAYLAND_DISPLAY' then
-    -- Wayland session - use wl-clipboard
-    vim.g.clipboard = {
-      name = 'wl-clipboard',
-      copy = {
-        ['+'] = 'wl-copy',
-        ['*'] = 'wl-copy',
-      },
-      paste = {
-        ['+'] = 'wl-paste --no-newline',
-        ['*'] = 'wl-paste --no-newline',
-      },
-      cache_enabled = 0,
-    }
-  elseif os.getenv 'DISPLAY' then
-    -- X11 session - use xclip (or xsel as fallback)
-    vim.g.clipboard = {
-      name = 'xclip',
-      copy = {
-        ['+'] = 'xclip -selection clipboard',
-        ['*'] = 'xclip -selection primary',
-      },
-      paste = {
-        ['+'] = 'xclip -selection clipboard -o',
-        ['*'] = 'xclip -selection primary -o',
-      },
-      cache_enabled = 0,
-    }
-  end
-end)
+vim.opt.clipboard = 'unnamedplus'
+vim.g.clipboard = {
+  name = 'xsel',
+  copy = {
+    ['+'] = 'xsel --clipboard --input',
+    ['*'] = 'xsel --primary --input',
+  },
+  paste = {
+    ['+'] = 'xsel --clipboard --output',
+    ['*'] = 'xsel --primary --output',
+  },
+  cache_enabled = 0,
+}
+-- vim.schedule(function()
+--   vim.o.clipboard = 'unnamedplus'
+--
+--   -- Configure clipboard provider based on session type
+--   if os.getenv 'WAYLAND_DISPLAY' then
+--     -- Wayland session - use wl-clipboard
+--     vim.g.clipboard = {
+--       name = 'wl-clipboard',
+--       copy = {
+--         ['+'] = 'wl-copy',
+--         ['*'] = 'wl-copy',
+--       },
+--       paste = {
+--         ['+'] = 'wl-paste --no-newline',
+--         ['*'] = 'wl-paste --no-newline',
+--       },
+--       cache_enabled = 0,
+--     }
+--   elseif os.getenv 'DISPLAY' then
+--     -- X11 session - use xclip (or xsel as fallback)
+--     vim.g.clipboard = {
+--       name = 'xsel',
+--       copy = {
+--         ['+'] = 'xsel --nodetach -i -b',
+--         ['*'] = 'xsel --nodetach -i -p',
+--       },
+--       paste = {
+--         ['+'] = 'xsel -o -b',
+--         ['*'] = 'xsel -o -p',
+--       },
+--       cache_enabled = 0,
+--     }
+--   end
+-- end)
 
 -- Enable break indent
 vim.o.breakindent = true
@@ -182,6 +199,20 @@ vim.o.splitbelow = true
 vim.o.list = true
 vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
 
+-- Set default tabstop and shiftwidth
+vim.opt.tabstop = 4
+vim.opt.shiftwidth = 4
+
+-- Force terminal capabilities
+vim.opt.termguicolors = true
+vim.g.terminal_ansi_colors = vim.g.terminal_ansi_colors or {}
+
+-- Ensure undercurl works
+vim.cmd [[
+  let &t_Cs = "\e[4:3m"
+  let &t_Ce = "\e[4:0m"
+]]
+
 -- Preview substitutions live, as you type!
 vim.o.inccommand = 'split'
 
@@ -205,6 +236,7 @@ vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 
 -- Diagnostic keymaps
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
+vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Show diagnostic [E]rror' })
 
 -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
 -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
@@ -215,8 +247,8 @@ vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagn
 vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
 
 -- Navigate buffers
-vim.keymap.set({ 'n', 'v' }, '<C-h>', ':bp<CR>', { desc = 'Previous buffer', silent = true })
-vim.keymap.set({ 'n', 'v' }, '<C-æ>', ':bn<CR>', { desc = 'Next buffer', silent = true })
+-- vim.keymap.set({ 'n', 'v' }, '<C-h>', ':bp<CR>', { desc = 'Previous buffer', silent = true })
+-- vim.keymap.set({ 'n', 'v' }, '<C-æ>', ':bn<CR>', { desc = 'Next buffer', silent = true })
 vim.keymap.set({ 'n', 'v' }, '<C-q>', ':bdelete<CR>', { desc = 'Close buffer', silent = true })
 
 -- Keep visual selection after indenting
@@ -232,12 +264,18 @@ vim.keymap.set('v', '>', '>gv', { desc = 'Indent right and stay in visual mode' 
 -- Remap pasting in command line mode
 vim.keymap.set('c', '<C-p>', '<C-r>+', { desc = 'Paste in command line mode' })
 
---
 --  See `:help wincmd` for a list of all window commands
 -- vim.keymap.set('n', '<C-M-j>', '<C-w><C-h>', { desc = 'Move focus to the left window' })
 -- vim.keymap.set('n', '<C-M-ø>', '<C-w><C-l>', { desc = 'Move focus to the right window' })
 -- vim.keymap.set('n', '<C-M-k>', '<C-w><C-j>', { desc = 'Move focus to the lower window' })
 -- vim.keymap.set('n', '<C-M-l>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
+
+vim.keymap.set({ 'n', 'v' }, '<C-w>J', '<C-W>H', { desc = 'Move window to the far left' })
+vim.keymap.set({ 'n', 'v' }, '<C-w>K', '<C-W>J', { desc = 'Move window to the bottom' })
+vim.keymap.set({ 'n', 'v' }, '<C-w>L', '<C-W>K', { desc = 'Move window to the top' })
+vim.keymap.set({ 'n', 'v' }, '<C-w>Ø', '<C-W>L', { desc = 'Move window to the far right' })
+vim.keymap.set({ 'n', 'v' }, '<C-w>æ', '<C-W>s', { desc = 'Split window' })
+vim.keymap.set({ 'n', 'v' }, '<C-w>h', '<C-W>v', { desc = 'Split window vertically' })
 
 -- Remap movement keys
 vim.keymap.set({ 'n', 'v' }, 'j', 'h', { noremap = true })
@@ -252,6 +290,13 @@ vim.keymap.set({ 'n', 'v' }, 'æ', '$', { noremap = true })
 -- Remap moving through jumlist history
 vim.keymap.set({ 'n', 'v' }, '<M-j>', '<C-o>', { noremap = true })
 vim.keymap.set({ 'n', 'v' }, '<M-ø>', '<C-i>', { noremap = true })
+
+-- Set GitSigns colors
+vim.api.nvim_set_hl(0, 'GitSignsAdd', { fg = '#00ff00', bg = 'NONE' }) -- Bright green for additions
+vim.api.nvim_set_hl(0, 'GitSignsChange', { fg = '#ffff00', bg = 'NONE' }) -- Bright yellow for changes
+vim.api.nvim_set_hl(0, 'GitSignsDelete', { fg = '#ff0000', bg = 'NONE' }) -- Bright red for deletions
+vim.api.nvim_set_hl(0, 'GitSignsChangeDelete', { fg = '#ff8800', bg = 'NONE' }) -- Orange for change+delete
+vim.api.nvim_set_hl(0, 'GitSignsTopDelete', { fg = '#ff0000', bg = 'NONE' }) -- Red for top delete
 
 -- NOTE: Some terminals have colliding keymaps or are not able to send distinct keycodes
 -- vim.keymap.set("n", "<C-S-h>", "<C-w>H", { desc = "Move window to the left" })
@@ -327,15 +372,16 @@ require('lazy').setup({
   -- See `:help gitsigns` to understand what the configuration keys do
   { -- Adds git related signs to the gutter, as well as utilities for managing changes
     'lewis6991/gitsigns.nvim',
-    opts = {
-      signs = {
-        add = { text = '+' },
-        change = { text = '~' },
-        delete = { text = '_' },
-        topdelete = { text = '‾' },
-        changedelete = { text = '~' },
-      },
-    },
+    vim.keymap.set('n', '<leader>gp', ':Gitsigns preview_hunk<CR>', {}),
+    -- opts = {
+    --   signs = {
+    --     add = { text = '+' },
+    --     change = { text = '~' },
+    --     delete = { text = '_' },
+    --     topdelete = { text = '‾' },
+    --     changedelete = { text = '~' },
+    --   },
+    -- },
   },
 
   -- NOTE: Plugins can also be configured to run Lua code when they are loaded.
@@ -464,11 +510,20 @@ require('lazy').setup({
         defaults = {
           mappings = {
             i = {
-              ['<C-h>'] = 'which_key',
+              ['<C-k>'] = 'which_key',
+              ['<C-h>'] = 'select_vertical',
+              [vim.fn.nr2char(57633)] = 'select_horizontal',
               ['<c-enter>'] = 'to_fuzzy_refine',
             },
             n = {
+              ['<C-k>'] = 'which_key',
+              ['<C-h>'] = 'select_vertical',
+              ['<F48>'] = 'select_horizontal',
               ['q'] = require('telescope.actions').delete_buffer,
+              ['l'] = 'move_selection_previous',
+              ['k'] = 'move_selection_next',
+              ['ø'] = 'preview_scrolling_down',
+              ['j'] = 'preview_scrolling_up',
             },
           },
         },
@@ -527,6 +582,7 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
       vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
       vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
+      vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
       vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
 
       -- Slightly advanced example of overriding default behavior and theme
@@ -629,7 +685,7 @@ require('lazy').setup({
 
           -- Rename the variable under your cursor.
           --  Most Language Servers support renaming across files, etc.
-          map('grn', vim.lsp.buf.rename, '[R]e[n]ame')
+          map('gR', vim.lsp.buf.rename, '[R]e[n]ame')
 
           -- Execute a code action, usually your cursor needs to be on top of an error
           -- or a suggestion from your LSP for this to activate.
@@ -725,8 +781,9 @@ require('lazy').setup({
       -- See :help vim.diagnostic.Opts
       vim.diagnostic.config {
         severity_sort = true,
-        float = { border = 'rounded', source = 'if_many' },
-        underline = { severity = vim.diagnostic.severity.ERROR },
+        float = { border = 'rounded', source = 'if_many', max_width = 100, wrap = true },
+        -- underline = { severity = vim.diagnostic.severity.ERROR },
+        underline = { severity = { min = vim.diagnostic.severity.WARN } },
         signs = vim.g.have_nerd_font and {
           text = {
             [vim.diagnostic.severity.ERROR] = '󰅚 ',
@@ -739,13 +796,12 @@ require('lazy').setup({
           source = 'if_many',
           spacing = 2,
           format = function(diagnostic)
-            local diagnostic_message = {
-              [vim.diagnostic.severity.ERROR] = diagnostic.message,
-              [vim.diagnostic.severity.WARN] = diagnostic.message,
-              [vim.diagnostic.severity.INFO] = diagnostic.message,
-              [vim.diagnostic.severity.HINT] = diagnostic.message,
-            }
-            return diagnostic_message[diagnostic.severity]
+            local max_length = 50 -- Adjust this to fit your screen
+            local message = diagnostic.message
+            if #message > max_length then
+              return string.sub(message, 1, max_length) .. '...'
+            end
+            return message
           end,
         },
       }
@@ -755,6 +811,7 @@ require('lazy').setup({
       --  When you add blink.cmp, luasnip, etc. Neovim now has *more* capabilities.
       --  So, we create new capabilities with blink.cmp, and then broadcast that to the servers.
       local capabilities = require('blink.cmp').get_lsp_capabilities()
+      capabilities.textDocument.completion.completionItem.snippetSupport = true
 
       -- Enable the following language servers
       --  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
@@ -765,7 +822,6 @@ require('lazy').setup({
       --  - capabilities (table): Override fields in capabilities. Can be used to disable certain LSP features.
       --  - settings (table): Override the default settings passed when initializing the server.
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
-      local util = require 'lspconfig.util'
       local servers = {
         -- clangd = {},
         -- gopls = {},
@@ -778,10 +834,21 @@ require('lazy').setup({
         --
         -- But for many setups, the LSP (`ts_ls`) will work just fine
         ts_ls = {
-          -- root_dir = function(fname)
-          --   return util.root_pattern('tsconfig.json', 'jsconfig.json', 'package.json', '.git')(fname) or vim.fs.dirname(fname)
-          -- end,
+          settings = {
+            typescript = {
+              preferences = {
+                importModuleSpecifier = 'non-relative',
+                includeCompletionsForModuleExports = true,
+              },
+            },
+          },
         },
+        html = {},
+        cssls = {},
+        tailwindcss = {},
+        emmet_language_server = {}, -- LSP for jsx and tsx
+        marksman = {}, --Markdown LSP
+        ltex = {},
 
         -- eslint = {
         --   settings = {
@@ -875,6 +942,16 @@ require('lazy').setup({
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
+        html = { 'prettier' },
+        css = { 'prettier' },
+        scss = { 'prettier' },
+        javascript = { 'prettier' },
+        javascriptreact = { 'prettier' },
+        typescript = { 'prettier' },
+        typescriptreact = { 'prettier' },
+        json = { 'prettier' },
+        yaml = { 'prettier' },
+        markdown = { 'prettier' },
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
         --
@@ -906,12 +983,12 @@ require('lazy').setup({
           -- `friendly-snippets` contains a variety of premade snippets.
           --    See the README about individual language/framework/plugin snippets:
           --    https://github.com/rafamadriz/friendly-snippets
-          -- {
-          --   'rafamadriz/friendly-snippets',
-          --   config = function()
-          --     require('luasnip.loaders.from_vscode').lazy_load()
-          --   end,
-          -- },
+          {
+            'rafamadriz/friendly-snippets',
+            config = function()
+              require('luasnip.loaders.from_vscode').lazy_load()
+            end,
+          },
         },
         opts = {},
       },
@@ -942,13 +1019,17 @@ require('lazy').setup({
         -- <c-k>: Toggle signature help
         --
         -- See :h blink-cmp-config-keymap for defining your own keymap
-        preset = 'super-tab',
+        -- preset = 'super-tab',
+        ['<CR>'] = { 'accept', 'fallback' },
         -- Override Tab to add bracket jumping functionality
         ['<Tab>'] = {
           function(cmp)
             -- Check if completion menu is visible
+            -- if cmp.is_visible() then
+            --   return cmp.accept()
+            -- end
             if cmp.is_visible() then
-              return cmp.accept()
+              return cmp.cancel()
             end
 
             -- Check if we're right before a closing character
@@ -1014,25 +1095,89 @@ require('lazy').setup({
     },
   },
 
-  { -- You can easily change to a different colorscheme.
-    -- Change the name of the colorscheme plugin below, and then
-    -- change the command in the config to whatever the name of that colorscheme is.
-    --
-    -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
-    'folke/tokyonight.nvim',
+  -- { -- You can easily change to a different colorscheme.
+  --   -- Change the name of the colorscheme plugin below, and then
+  --   -- change the command in the config to whatever the name of that colorscheme is.
+  --   --
+  --   -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
+  --   'folke/tokyonight.nvim',
+  --   priority = 1000, -- Make sure to load this before all the other start plugins.
+  --   config = function()
+  --     ---@diagnostic disable-next-line: missing-fields
+  --     require('tokyonight').setup {
+  --       styles = {
+  --         comments = { italic = false }, -- Disable italics in comments
+  --       },
+  --     }
+  --
+  --     -- Load the colorscheme here.
+  --     -- Like many other themes, this one has different styles, and you could load
+  --     -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
+  --     vim.cmd.colorscheme 'tokyonight-night'
+  --   end,
+  -- },
+
+  -- {
+  --   'loctvl842/monokai-pro.nvim',
+  --   priority = 1000, -- Make sure to load this before all the other start plugins.
+  --   config = function()
+  --     ---@diagnostic disable-next-line: missing-fields
+  --     require('monokai-pro').setup {
+  --       styles = {
+  --         comments = { italic = false }, -- Disable italics in comments
+  --       },
+  --       overrideScheme = function(cs, p, config, hp)
+  --         local cs_override = {}
+  --         local calc_bg = hp.blend(p.background, 0.75, '#000000')
+  --
+  --         cs_override.editor = {
+  --           background = calc_bg,
+  --         }
+  --         return cs_override
+  --       end,
+  --     }
+  --     vim.cmd.colorscheme 'monokai-pro'
+  --   end,
+  -- },
+
+  {
+    'rebelot/kanagawa.nvim',
     priority = 1000, -- Make sure to load this before all the other start plugins.
     config = function()
       ---@diagnostic disable-next-line: missing-fields
-      require('tokyonight').setup {
+      require('kanagawa').setup {
+        undercurl = true,
         styles = {
           comments = { italic = false }, -- Disable italics in comments
         },
+        overrides = function(colors) -- add/modify highlights
+          return {
+            Normal = { bg = '#000000' },
+            NormalNC = { bg = '#000000' },
+            NormalFloat = { bg = '#000000' },
+            SignColumn = { bg = '#000000' },
+            LineNr = { bg = '#000000' }, -- line numbers background
+            GitSignsAdd = { bg = '#000000' },
+            GitSignsChange = { bg = '#000000' },
+            GitSignsDelete = { bg = '#000000' },
+            GitSignsChangeDelete = { bg = '#000000' },
+            GitSignsTopDelete = { bg = '#000000' },
+            -- DiagnosticUnderlineError = {
+            --   undercurl = true,
+            --   sp = '#FF0000', -- or colors.palette.peachRed
+            -- },
+            -- DiagnosticUnderlineWarn = {
+            --   undercurl = true,
+            --   sp = '#FFA500', -- or colors.palette.boatYellow2
+            -- },
+          }
+        end,
+        theme = 'wave', -- Load "wave" theme
+        background = { -- map the value of 'background' option to a theme
+          dark = 'wave', -- try "dragon" !
+        },
       }
-
-      -- Load the colorscheme here.
-      -- Like many other themes, this one has different styles, and you could load
-      -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      vim.cmd.colorscheme 'tokyonight-night'
+      vim.cmd.colorscheme 'kanagawa'
     end,
   },
 
@@ -1058,8 +1203,8 @@ require('lazy').setup({
       require('mini.surround').setup {
         surrounds = {
           -- Flip the parenthesis behavior
-          ['('] = { output = { left = '(', right = ')' } },
-          [')'] = { output = { left = '( ', right = ' )' } },
+          -- ['('] = { output = { left = '(', right = ')' } },
+          -- [')'] = { output = { left = '( ', right = ' )' } },
         },
       }
 

@@ -9,7 +9,8 @@ return {
       vim.keymap.set({ 'n', 'v' }, '<C-j>', ':TmuxNavigateLeft<CR>')
       vim.keymap.set({ 'n', 'v' }, '<C-k>', ':TmuxNavigateDown<CR>')
       vim.keymap.set({ 'n', 'v' }, '<C-l>', ':TmuxNavigateUp<CR>')
-      vim.keymap.set({ 'n', 'v' }, vim.fn.nr2char(57632), ':TmuxNavigateRight<CR>')
+      -- vim.keymap.set({ 'n', 'v' }, vim.fn.nr2char(57632), ':TmuxNavigateRight<CR>')
+      vim.keymap.set({ 'n', 'v' }, '<F47>', ':TmuxNavigateRight<CR>')
     end,
   },
 }
